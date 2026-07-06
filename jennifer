@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Business Model Canvas</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.0/umd/lucide.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --card-bg: rgba(255, 255, 255, 0.7);
+            --primary-color: #4f46e5;
+            --text-color: #1f2937;
+            --accent-color: #fbbf24;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
+            margin: 0;
+            padding: 20px;
+            color: var(--text-color);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-weight: 800;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            margin-bottom: 10px;
+        }
+
+        /* Grid Layout */
+        .canvas-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(2, 1fr) 150px;
+            gap: 15px;
+            height: auto;
+        }
+
+        .block {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s;
+        }
+
+        .block:hover {
+            transform: translateY(-5px);
+        }
+
+        .block-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid rgba(0,0,0,0.05);
+            padding-bottom: 8px;
+        }
+
+        .block-header i {
+            color: var(--primary-color);
+            width: 20px;
+        }
+
+        .block-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        /* Posicionamiento específico del Canvas */
+        .partners { grid-row: span 2; }
+        .activities { grid-row: span 1; }
+        .resources { grid-row: span 1; }
+        .value-proposition { grid-row: span 2; }
+        .relationships { grid-row: span 1; }
+        .channels { grid-row: span 1; }
+        .segments { grid-row: span 2; }
+        .costs { grid-column: span 2.5; grid-column: 1 / 3; }
+        .revenue { grid-column: span 2.5; grid-column: 3 / 6; }
+
+        /* Estilo de las Notas */
+        .notes-container {
+            flex-grow: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-content: flex-start;
+            min-height: 100px;
+        }
+
+        .note {
+            background: var(--accent-color);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            width: calc(50% - 10px);
+            box-shadow: 2px 4px 10px rgba(0,0,0,0.1);
+            position: relative;
+            cursor: pointer;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            word-wrap: break-word;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+
+        .note:hover .delete-btn {
+            display: block;
+        }
+
+        .delete-btn {
+            display: none;
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            text-align: center;
+            line-height: 18px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .add-btn {
+            background: none;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 5px;
+            cursor: pointer;
+            color: #94a3b8;
+            transition: all 0.2s;
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .add-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        /* Botones de acción inferior */
+        .actions {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn-main {
+            padding: 12px 25px;
+            border-radius: 30px;
+            border: none;
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+        }
+
+        .btn-main:hover {
+            opacity: 0.9;
+        }
+
+        /* Responsive */
+        @media (max-width: 1000px) {
+            .canvas-grid {
+                display: flex;
+                flex-direction: column;
+            }
+        }
+
+        @media print {
+            .add-btn, .actions, .delete-btn { display: none !important; }
+            body { background: white; }
+            .block { border: 1px solid #ccc; box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Business Model Canvas</h1>
+        <p>Haz clic en el botón "+" para añadir ideas. Tus datos se guardan automáticamente.</p>
+    </header>
+
+    <div class="canvas-grid" id="canvas">
+        <!-- Key Partners -->
+        <div class="block partners" data-id="partners">
+            <div class="block-header">
+                <i data-lucide="users"></i>
+                <span class="block-title">Asociaciones Clave</span>
+            </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('partners')"><i data-lucide="plus"></i></button>
+        </div>
+
+        <!-- Key Activities -->
+        <div class="block activities" data-id="activities">
+            <div class="block-header">
+                <i data-lucide="check-square"></i>
+                <span class="block-title">Actividades Clave</span>
+            </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('activities')"><i data-lucide="plus"></i></button>
+        </div>
+
+        <!-- Value Proposition -->
+        <div class="block value-proposition" data-id="value">
+            <div class="block-header">
+                <i data-lucide="gift"></i>
+                <span class="block-title">Propuesta de Valor</span>
+            </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('value')"><i data-lucide="plus"></i></button>
+        </div>
+
+        <!-- Customer Relationships -->
+        <div class="block relationships" data-id="relationships">
+            <div class="block-header">
+                <i data-lucide="heart"></i>
+                <span class="block-title">Relación con Clientes</span>
+            </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('relationships')"><i data-lucide="plus"></i></button>
+        </div>
+
+        <!-- Customer Segments -->
+        <div class="block segments" data-id="segments">
+            <div class="block-header">
+                <i data-lucide="user-check"></i>
+                <span class="block-title">Segmentos de Clientes</span>
+            </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('segments')"><i data-lucide="plus"></i></button>
+        </div>
+
+        <!-- Key Resources -->
+        <div class="block resources" data-id="resources">
+            <div class="block-header">
+                <i data-lucide="layers"></i>
+                <span class="block-title">Recursos Clave</span>
+            </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('resources')"><i data-lucide="plus"></i></button>
+        </div>
+
+        <!-- Channels -->
+        <div class="block channels" data-id="channels">
+            <div class="block-header">
+                <i data-lucide="truck"></i>
+                <span class="block-title">Canales</span>
+            </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('channels')"><i data-lucide="plus"></i></button>
+        </div>
+
+        <!-- Cost Structure -->
+        <div class="block costs" data-id="costs">
+            <div class="block-header">
+                <i data-lucide="credit-card"></i>
+                <span class="block-title">Estructura de Costes</span>
+            </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('costs')"><i data-lucide="plus"></i></button>
+        </div>
+
+        <!-- Revenue Streams -->
+        <div class="block revenue" data-id="revenue">
+            <div class="block-header">
+                <i data-lucide="dollar-sign"></i>
+                <span class="block-title">Fuentes de Ingresos</span>
+            </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('revenue')"><i data-lucide="plus"></i></button>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button class="btn-main" onclick="window.print()">
+            <i data-lucide="download"></i> Exportar a PDF
+        </button>
+        <button class="btn-main" style="background: #ef4444;" onclick="clearAll()">
+            <i data-lucide="trash-2"></i> Limpiar Todo
+        </button>
+    </div>
+</div>
+
+<script>
+    // Inicializar iconos
+    lucide.createIcons();
+
+    // Cargar datos guardados al iniciar
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedData = JSON.parse(localStorage.getItem('bmcData')) || {};
+        Object.keys(savedData).forEach(blockId => {
+            const container = document.querySelector(`[data-id="${blockId}"] .notes-container`);
+            savedData[blockId].forEach(text => {
+                createNoteElement(container, text, blockId);
+            });
+        });
+    });
+
+    function addNote(blockId) {
+        const text = prompt("Introduce tu idea:");
+        if (text && text.trim() !== "") {
+            const container = document.querySelector(`[data-id="${blockId}"] .notes-container`);
+            createNoteElement(container, text, blockId);
+            saveData();
+        }
+    }
+
+    function createNoteElement(container, text, blockId) {
+        const note = document.createElement('div');
+        note.className = 'note';
+        note.innerHTML = `
+            ${text}
+            <div class="delete-btn">&times;</div>
+        `;
+
+        note.querySelector('.delete-btn').onclick = (e) => {
+            e.stopPropagation();
+            note.remove();
+            saveData();
+        };
+
+        note.onclick = () => {
+            const newText = prompt("Editar nota:", text);
+            if (newText) {
+                note.firstChild.textContent = newText;
+                saveData();
+            }
+        };
+
+        container.appendChild(note);
+    }
+
+    function saveData() {
+        const data = {};
+        document.querySelectorAll('.block').forEach(block => {
+            const id = block.getAttribute('data-id');
+            const notes = Array.from(block.querySelectorAll('.note')).map(n => n.firstChild.textContent.trim());
+            data[id] = notes;
+        });
+        localStorage.setItem('bmcData', JSON.stringify(data));
+    }
+
+    function clearAll() {
+        if(confirm("¿Estás seguro de que quieres borrar todo el canvas?")) {
+            document.querySelectorAll('.notes-container').forEach(c => c.innerHTML = "");
+            localStorage.removeItem('bmcData');
+        }
+    }
+</script>
+
+</body>
+</html>
