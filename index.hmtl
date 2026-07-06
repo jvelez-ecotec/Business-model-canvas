@@ -1,1050 +1,387 @@
-import React, { useState, useEffect } from "react";
-import { 
-  Plus, 
-  Trash2, 
-  Download, 
-  Sparkles, 
-  BookOpen, 
-  RotateCcw, 
-  Menu, 
-  X, 
-  Check, 
-  Printer, 
-  Info, 
-  ChevronRight, 
-  Layers, 
-  Briefcase, 
-  FileText,
-  AlertCircle
-} from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
-import { CanvasItem, CanvasSection, BusinessModel } from "./types";
-import { CanvasBlock } from "./components/CanvasBlock";
-import { PRESET_TEMPLATES } from "./data/templates";
-import { exportToHtml } from "./utils/htmlExporter";
-
-// Default template structure
-const DEFAULT_SECTIONS = [
-  {
-    id: "partners",
-    name: "partners",
-    title: "Asociaciones Clave",
-    description: "Socios, proveedores o alianzas estratégicas necesarias para operar.",
-    icon: "partners",
-    placeholder: "Ej: Proveedores de café en grano, servicio de delivery local...",
-    items: [],
-  },
-  {
-    id: "activities",
-    name: "activities",
-    title: "Actividades Clave",
-    description: "Acciones críticas y procesos más importantes para que el negocio funcione.",
-    icon: "activities",
-    placeholder: "Ej: Tostado artesanal de café, marketing digital...",
-    items: [],
-  },
-  {
-    id: "resources",
-    name: "resources",
-    title: "Recursos Clave",
-    description: "Activos físicos, intelectuales, humanos y financieros indispensables.",
-    icon: "resources",
-    placeholder: "Ej: Baristas calificados, máquina de café espresso industrial...",
-    items: [],
-  },
-  {
-    id: "propositions",
-    name: "propositions",
-    title: "Propuestas de Valor",
-    description: "La solución, el conjunto de productos/servicios y los beneficios que te hacen único.",
-    icon: "propositions",
-    placeholder: "Ej: Café orgánico de especialidad con área de coworking silenciosa...",
-    items: [],
-  },
-  {
-    id: "relationships",
-    name: "relationships",
-    title: "Relación con Clientes",
-    description: "El tipo de interacción, asistencia y experiencia que ofreces a tu mercado.",
-    icon: "relationships",
-    placeholder: "Ej: Atención personalizada, club de fidelización con app móvil...",
-    items: [],
-  },
-  {
-    id: "channels",
-    name: "channels",
-    title: "Canales",
-    description: "Medios de comunicación, distribución y ventas para entregar la propuesta.",
-    icon: "channels",
-    placeholder: "Ej: Tienda física, tienda web, Instagram, UberEats...",
-    items: [],
-  },
-  {
-    id: "segments",
-    name: "segments",
-    title: "Segmentos de Clientes",
-    description: "Los perfiles, nichos o comunidades específicas para las que creas valor.",
-    icon: "segments",
-    placeholder: "Ej: Profesionales remotos que buscan un espacio tranquilo, amantes del café...",
-    items: [],
-  },
-  {
-    id: "costs",
-    name: "costs",
-    title: "Estructura de Costes",
-    description: "Los gastos más significativos necesarios para operar el modelo de negocio.",
-    icon: "costs",
-    placeholder: "Ej: Alquiler del local, salarios del personal, compra de café...",
-    items: [],
-  },
-  {
-    id: "revenue",
-    name: "revenue",
-    title: "Fuentes de Ingresos",
-    description: "Cómo monetizas tus soluciones (suscripciones, ventas directas, licencias).",
-    icon: "revenue",
-    placeholder: "Ej: Venta de bebidas/comida, suscripción mensual de café, alquiler de sala...",
-    items: [],
-  },
-];
-
-const INITIAL_PROJECTS: BusinessModel[] = [
-  {
-    id: "project-new",
-    title: "Mi Proyecto de Innovación",
-    description: "Un modelo de negocios disruptivo enfocado en solucionar problemas reales.",
-    sections: {
-      partners: [],
-      activities: [],
-      resources: [],
-      propositions: [],
-      relationships: [],
-      channels: [],
-      segments: [],
-      costs: [],
-      revenue: [],
-    },
-  },
-];
-
-export default function App() {
-  const [projects, setProjects] = useState<BusinessModel[]>(() => {
-    const saved = localStorage.getItem("bmc_projects");
-    return saved ? JSON.parse(saved) : INITIAL_PROJECTS;
-  });
-
-  const [activeProjectId, setActiveProjectId] = useState<string>(() => {
-    const saved = localStorage.getItem("bmc_active_project_id");
-    return saved && localStorage.getItem("bmc_projects") ? saved : "project-new";
-  });
-
-  const [activeTab, setActiveTab] = useState<"canvas" | "guide">("canvas");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
-  const [aiInput, setAiInput] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  
-  // State for selective insertion of AI suggestions
-  const [aiSuggestions, setAiSuggestions] = useState<Record<string, string[]>>({});
-  const [selectedSuggestions, setSelectedSuggestions] = useState<Record<string, boolean[]>>({});
-
-  // Active project helper
-  const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0] || INITIAL_PROJECTS[0];
-
-  // Sync state to local storage
-  useEffect(() => {
-    localStorage.setItem("bmc_projects", JSON.stringify(projects));
-  }, [projects]);
-
-  useEffect(() => {
-    localStorage.setItem("bmc_active_project_id", activeProjectId);
-  }, [activeProjectId]);
-
-  // Project Operations
-  const handleCreateProject = () => {
-    const title = prompt("Introduce el nombre de tu idea de negocio:", "Nueva Idea Increíble");
-    if (title && title.trim()) {
-      const newId = "project-" + Date.now();
-      const newProj: BusinessModel = {
-        id: newId,
-        title: title.trim(),
-        description: "Modelo de negocio creado para una idea innovadora.",
-        sections: {
-          partners: [],
-          activities: [],
-          resources: [],
-          propositions: [],
-          relationships: [],
-          channels: [],
-          segments: [],
-          costs: [],
-          revenue: [],
-        },
-      };
-      setProjects([...projects, newProj]);
-      setActiveProjectId(newId);
-    }
-  };
-
-  const handleDeleteProject = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (projects.length <= 1) {
-      alert("Debes mantener al menos un lienzo de modelo de negocio.");
-      return;
-    }
-    if (confirm("¿Estás seguro de que deseas eliminar este lienzo permanentemente?")) {
-      const nextProjects = projects.filter((p) => p.id !== id);
-      setProjects(nextProjects);
-      if (activeProjectId === id) {
-        setActiveProjectId(nextProjects[0].id);
-      }
-    }
-  };
-
-  const handleUpdateProjectMeta = () => {
-    const nextTitle = prompt("Editar nombre de la idea:", activeProject.title);
-    if (nextTitle === null) return;
-    
-    const nextDesc = prompt("Editar descripción corta:", activeProject.description);
-    if (nextDesc === null) return;
-
-    setProjects(
-      projects.map((p) =>
-        p.id === activeProjectId
-          ? { ...p, title: nextTitle.trim() || p.title, description: nextDesc.trim() || p.description }
-          : p
-      )
-    );
-  };
-
-  // Sticky Note Operations
-  const handleAddItem = (sectionId: string, text: string, color: string) => {
-    const newItem: CanvasItem = {
-      id: "note-" + Date.now() + Math.random().toString(36).substr(2, 4),
-      text,
-      color,
-      createdAt: Date.now(),
-    };
-
-    setProjects(
-      projects.map((p) => {
-        if (p.id === activeProjectId) {
-          const currentItems = p.sections[sectionId] || [];
-          return {
-            ...p,
-            sections: {
-              ...p.sections,
-              [sectionId]: [...currentItems, newItem],
-            },
-          };
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Business Model Canvas</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.0/umd/lucide.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --card-bg: rgba(255, 255, 255, 0.7);
+            --primary-color: #4f46e5;
+            --text-color: #1f2937;
+            --accent-color: #fbbf24;
         }
-        return p;
-      })
-    );
-  };
 
-  const handleEditItem = (sectionId: string, itemId: string, text: string, color: string) => {
-    setProjects(
-      projects.map((p) => {
-        if (p.id === activeProjectId) {
-          const currentItems = p.sections[sectionId] || [];
-          return {
-            ...p,
-            sections: {
-              ...p.sections,
-              [sectionId]: currentItems.map((item) =>
-                item.id === itemId ? { ...item, text, color } : item
-              ),
-            },
-          };
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
+            margin: 0;
+            padding: 20px;
+            color: var(--text-color);
+            min-height: 100vh;
         }
-        return p;
-      })
-    );
-  };
 
-  const handleDeleteItem = (sectionId: string, itemId: string) => {
-    setProjects(
-      projects.map((p) => {
-        if (p.id === activeProjectId) {
-          const currentItems = p.sections[sectionId] || [];
-          return {
-            ...p,
-            sections: {
-              ...p.sections,
-              [sectionId]: currentItems.filter((item) => item.id !== itemId),
-            },
-          };
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
         }
-        return p;
-      })
-    );
-  };
 
-  const handleResetCanvas = () => {
-    if (confirm("¿Estás seguro de que deseas vaciar este lienzo? Perderás todas tus notas actuales.")) {
-      setProjects(
-        projects.map((p) =>
-          p.id === activeProjectId
-            ? {
-                ...p,
-                sections: {
-                  partners: [],
-                  activities: [],
-                  resources: [],
-                  propositions: [],
-                  relationships: [],
-                  channels: [],
-                  segments: [],
-                  costs: [],
-                  revenue: [],
-                },
-              }
-            : p
-        )
-      );
-    }
-  };
-
-  // Pre-load reference templates (famous models)
-  const handleLoadTemplate = (template: BusinessModel) => {
-    if (
-      confirm(
-        `¿Deseas sobreescribir el lienzo "${activeProject.title}" con el ejemplo de "${template.title}"?`
-      )
-    ) {
-      setProjects(
-        projects.map((p) =>
-          p.id === activeProjectId
-            ? {
-                ...p,
-                title: template.title,
-                description: template.description,
-                sections: JSON.parse(JSON.stringify(template.sections)),
-              }
-            : p
-        )
-      );
-    }
-  };
-
-  // HTML Downloader link
-  const handleDownloadHtml = () => {
-    // Inject active project data into sections structure
-    const compiledSections = DEFAULT_SECTIONS.map((sec) => ({
-      ...sec,
-      items: activeProject.sections[sec.id] || [],
-    }));
-
-    const htmlString = exportToHtml(compiledSections, activeProject.title, activeProject.description);
-    
-    // Create actual download
-    const blob = new Blob([htmlString], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `canvas-${activeProject.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  // AI Brainstorming Generation
-  const handleGenerateAiCanvas = async () => {
-    if (!aiInput.trim()) {
-      setErrorMsg("Por favor, ingresa una descripción para tu idea.");
-      return;
-    }
-    
-    setIsGenerating(true);
-    setErrorMsg("");
-    setAiSuggestions({});
-    
-    try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idea: aiInput }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Error al generar con IA.");
-      }
-
-      const data = await response.json();
-      
-      // Load suggestions
-      setAiSuggestions(data);
-      
-      // Initialize checkmarks as true for all suggestions
-      const initialChecked: Record<string, boolean[]> = {};
-      Object.keys(data).forEach((key) => {
-        initialChecked[key] = Array(data[key].length).fill(true);
-      });
-      setSelectedSuggestions(initialChecked);
-    } catch (err: any) {
-      console.error(err);
-      setErrorMsg(err.message || "No se pudo comunicar con el asistente de IA. Verifica tu conexión.");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  // Select/Deselect individual suggestion items
-  const toggleSuggestionCheck = (sectionId: string, index: number) => {
-    setSelectedSuggestions((prev) => {
-      const copy = { ...prev };
-      if (copy[sectionId]) {
-        const updatedSec = [...copy[sectionId]];
-        updatedSec[index] = !updatedSec[index];
-        copy[sectionId] = updatedSec;
-      }
-      return copy;
-    });
-  };
-
-  // Apply checked suggestions to active canvas
-  const handleApplyAiSuggestions = () => {
-    // Generate color mapping for each section
-    const sectionColors: Record<string, string> = {
-      partners: "bg-rose-100 text-rose-900 border-rose-200",
-      activities: "bg-amber-100 text-amber-900 border-amber-200",
-      resources: "bg-emerald-100 text-emerald-900 border-emerald-200",
-      propositions: "bg-sky-100 text-sky-900 border-sky-200",
-      relationships: "bg-violet-100 text-violet-900 border-violet-200",
-      channels: "bg-orange-100 text-orange-900 border-orange-200",
-      segments: "bg-fuchsia-100 text-fuchsia-900 border-fuchsia-200",
-      costs: "bg-stone-100 text-stone-900 border-stone-200",
-      revenue: "bg-indigo-100 text-indigo-900 border-indigo-200",
-    };
-
-    setProjects(
-      projects.map((p) => {
-        if (p.id === activeProjectId) {
-          const updatedSections = { ...p.sections };
-          
-          Object.keys(aiSuggestions).forEach((sectionId) => {
-            const suggestionsList = aiSuggestions[sectionId] || [];
-            const checksList = selectedSuggestions[sectionId] || [];
-            const existingItems = updatedSections[sectionId] || [];
-
-            const newStickyNotes = suggestionsList
-              .filter((_, idx) => checksList[idx])
-              .map((text, idx) => ({
-                id: "ai-" + Date.now() + Math.random().toString(36).substr(2, 4) + idx,
-                text,
-                color: sectionColors[sectionId] || "bg-amber-100 text-amber-900 border-amber-200",
-                createdAt: Date.now() + idx,
-              }));
-
-            updatedSections[sectionId] = [...existingItems, ...newStickyNotes];
-          });
-
-          return {
-            ...p,
-            sections: updatedSections,
-            // Optionally update the description if blank
-            description: p.description.includes("creado para") ? `Canvas asistido por IA para: ${aiInput}` : p.description
-          };
+        header {
+            text-align: center;
+            margin-bottom: 30px;
         }
-        return p;
-      })
-    );
 
-    // Reset AI states
-    setIsAiPanelOpen(false);
-    setAiInput("");
-    setAiSuggestions({});
-  };
+        h1 {
+            font-weight: 800;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            margin-bottom: 10px;
+        }
 
-  // Compile active sections for rendering
-  const activeSections = DEFAULT_SECTIONS.map((sec) => ({
-    ...sec,
-    items: activeProject.sections[sec.id] || [],
-  }));
+        /* Grid Layout */
+        .canvas-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(2, 1fr) 150px;
+            gap: 15px;
+            height: auto;
+        }
 
-  const quickConcepts = [
-    "Cafetería ecológica para amantes de las mascotas",
-    "Plataforma SaaS para nutricionistas independientes",
-    "Servicio de carpooling seguro para universitarios",
-    "Librería móvil con talleres creativos rodantes",
-  ];
+        .block {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s;
+        }
 
-  return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800 selection:bg-indigo-100 selection:text-indigo-900">
-      
-      {/* Top Navigation */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 no-print">
-        <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between gap-4">
-          
-          {/* Left Title & Toggle */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all cursor-pointer"
-              title={isSidebarOpen ? "Cerrar Panel" : "Abrir Panel"}
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="bg-indigo-600 text-white p-1.5 rounded-lg">
-                <Layers className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="font-display font-extrabold text-lg text-slate-900 tracking-tight leading-none">
-                  LienzoCanvas
-                </h1>
-                <p className="text-[10px] text-slate-400 font-medium">Business Model Canvas Interactivo</p>
-              </div>
+        .block:hover {
+            transform: translateY(-5px);
+        }
+
+        .block-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid rgba(0,0,0,0.05);
+            padding-bottom: 8px;
+        }
+
+        .block-header i {
+            color: var(--primary-color);
+            width: 20px;
+        }
+
+        .block-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        /* Posicionamiento específico del Canvas */
+        .partners { grid-row: span 2; }
+        .activities { grid-row: span 1; }
+        .resources { grid-row: span 1; }
+        .value-proposition { grid-row: span 2; }
+        .relationships { grid-row: span 1; }
+        .channels { grid-row: span 1; }
+        .segments { grid-row: span 2; }
+        .costs { grid-column: span 2.5; grid-column: 1 / 3; }
+        .revenue { grid-column: span 2.5; grid-column: 3 / 6; }
+
+        /* Estilo de las Notas */
+        .notes-container {
+            flex-grow: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-content: flex-start;
+            min-height: 100px;
+        }
+
+        .note {
+            background: var(--accent-color);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            width: calc(50% - 10px);
+            box-shadow: 2px 4px 10px rgba(0,0,0,0.1);
+            position: relative;
+            cursor: pointer;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            word-wrap: break-word;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+
+        .note:hover .delete-btn {
+            display: block;
+        }
+
+        .delete-btn {
+            display: none;
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            text-align: center;
+            line-height: 18px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .add-btn {
+            background: none;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 5px;
+            cursor: pointer;
+            color: #94a3b8;
+            transition: all 0.2s;
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .add-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        /* Botones de acción inferior */
+        .actions {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn-main {
+            padding: 12px 25px;
+            border-radius: 30px;
+            border: none;
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+        }
+
+        .btn-main:hover {
+            opacity: 0.9;
+        }
+
+        /* Responsive */
+        @media (max-width: 1000px) {
+            .canvas-grid {
+                display: flex;
+                flex-direction: column;
+            }
+        }
+
+        @media print {
+            .add-btn, .actions, .delete-btn { display: none !important; }
+            body { background: white; }
+            .block { border: 1px solid #ccc; box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Business Model Canvas</h1>
+        <p>Haz clic en el botón "+" para añadir ideas. Tus datos se guardan automáticamente.</p>
+    </header>
+
+    <div class="canvas-grid" id="canvas">
+        <!-- Key Partners -->
+        <div class="block partners" data-id="partners">
+            <div class="block-header">
+                <i data-lucide="users"></i>
+                <span class="block-title">Asociaciones Clave</span>
             </div>
-          </div>
-
-          {/* Center Tabs */}
-          <div className="hidden sm:flex bg-slate-100 p-1 rounded-lg">
-            <button
-              onClick={() => setActiveTab("canvas")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                activeTab === "canvas" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              Tablero Interactivo
-            </button>
-            <button
-              onClick={() => setActiveTab("guide")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                activeTab === "guide" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              Guía Metodológica
-            </button>
-          </div>
-
-          {/* Right Action buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsAiPanelOpen(true)}
-              className="px-3 py-2 bg-indigo-600 text-white font-semibold text-xs rounded-lg shadow-sm hover:bg-indigo-700 hover:shadow-md active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Brainstorm con IA</span>
-            </button>
-            
-            <button
-              onClick={handleDownloadHtml}
-              className="px-3 py-2 bg-white border border-slate-200 text-slate-700 font-semibold text-xs rounded-lg hover:bg-slate-50 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Descargar HTML</span>
-              <span className="inline md:hidden">Exportar</span>
-            </button>
-
-            <button
-              onClick={() => window.print()}
-              className="p-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
-              title="Imprimir lienzo"
-            >
-              <Printer className="w-4 h-4" />
-            </button>
-          </div>
-
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('partners')"><i data-lucide="plus"></i></button>
         </div>
-      </header>
 
-      {/* Main Workspace */}
-      <div className="flex-1 flex overflow-hidden relative">
-
-        {/* LEFT SIDEBAR: Projects & Examples */}
-        <AnimatePresence>
-          {isSidebarOpen && (
-            <motion.aside
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 280, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="border-r border-slate-200 bg-white flex flex-col shrink-0 h-[calc(100vh-57px)] sticky top-[57px] overflow-y-auto no-print shadow-sm z-30"
-            >
-              <div className="p-4 space-y-6">
-                
-                {/* Section 1: Business projects */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <Briefcase className="w-3.5 h-3.5" />
-                      Tus Proyectos
-                    </h2>
-                    <button
-                      onClick={handleCreateProject}
-                      className="p-1 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-all cursor-pointer"
-                      title="Nuevo Lienzo"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {projects.map((proj) => (
-                      <div
-                        key={proj.id}
-                        onClick={() => setActiveProjectId(proj.id)}
-                        className={`p-2.5 rounded-lg cursor-pointer transition-all flex items-center justify-between group ${
-                          activeProjectId === proj.id
-                            ? "bg-indigo-50/70 border border-indigo-100 text-indigo-950"
-                            : "hover:bg-slate-50 text-slate-600 border border-transparent"
-                        }`}
-                      >
-                        <div className="min-w-0 pr-2">
-                          <p className="text-xs font-semibold truncate font-display">
-                            {proj.title}
-                          </p>
-                          <p className="text-[10px] text-slate-400 truncate mt-0.5">
-                            {proj.description}
-                          </p>
-                        </div>
-                        <button
-                          onClick={(e) => handleDeleteProject(proj.id, e)}
-                          className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer shrink-0"
-                          title="Eliminar lienzo"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Section 2: Reference Templates */}
-                <div className="space-y-3">
-                  <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5" />
-                    Ejemplos Inspiracionales
-                  </h2>
-                  <div className="space-y-1.5">
-                    {PRESET_TEMPLATES.map((tmpl) => (
-                      <button
-                        key={tmpl.id}
-                        onClick={() => handleLoadTemplate(tmpl)}
-                        className="w-full text-left p-2.5 rounded-lg border border-slate-100 bg-slate-50/50 hover:bg-indigo-50/30 hover:border-indigo-100 text-slate-700 transition-all group flex items-start justify-between cursor-pointer"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-slate-800 font-display">
-                            Lienzo de {tmpl.title.split(" ")[0]}
-                          </p>
-                          <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
-                            {tmpl.description}
-                          </p>
-                        </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 transition-colors shrink-0 mt-0.5" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Section 3: Information card */}
-                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100/80 space-y-2">
-                  <div className="flex items-center gap-1.5 text-indigo-950 font-semibold text-xs">
-                    <Info className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>¿Cómo descargar?</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 leading-relaxed">
-                    Haz clic en <strong>Descargar HTML</strong> para obtener un archivo único portátil que puedes abrir y seguir editando sin internet. ¡Los cambios se guardan en el archivo!
-                  </p>
-                </div>
-
-              </div>
-            </motion.aside>
-          )}
-        </AnimatePresence>
-
-        {/* CENTER CONTENT CONTAINER */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-          
-          {/* Active Canvas Meta details (editable title/desc) */}
-          <div className="bg-white border border-slate-200/80 rounded-xl p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-sm no-print">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 text-[10px] font-bold bg-indigo-50 text-indigo-700 rounded-full font-sans border border-indigo-100/50">
-                  LIENZO DE MODELO
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono">ID: {activeProject.id.slice(0, 10)}</span>
-              </div>
-              <h2 className="text-xl font-display font-extrabold text-slate-800 tracking-tight">
-                {activeProject.title}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {activeProject.description || "Sin descripción proporcionada."}
-              </p>
+        <!-- Key Activities -->
+        <div class="block activities" data-id="activities">
+            <div class="block-header">
+                <i data-lucide="check-square"></i>
+                <span class="block-title">Actividades Clave</span>
             </div>
-            
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={handleUpdateProjectMeta}
-                className="px-3 py-1.5 text-xs text-slate-600 font-semibold border border-slate-200 bg-slate-50 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
-              >
-                Editar Título / Info
-              </button>
-              <button
-                onClick={handleResetCanvas}
-                className="px-3 py-1.5 text-xs text-rose-600 font-semibold bg-rose-50 border border-rose-100/50 rounded-lg hover:bg-rose-100/50 transition-all cursor-pointer flex items-center gap-1"
-                title="Borrar todas las notas"
-              >
-                <RotateCcw className="w-3 h-3" />
-                Vaciar Lienzo
-              </button>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('activities')"><i data-lucide="plus"></i></button>
+        </div>
+
+        <!-- Value Proposition -->
+        <div class="block value-proposition" data-id="value">
+            <div class="block-header">
+                <i data-lucide="gift"></i>
+                <span class="block-title">Propuesta de Valor</span>
             </div>
-          </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('value')"><i data-lucide="plus"></i></button>
+        </div>
 
-          {/* ACTIVE TAB CONTENTS */}
-          {activeTab === "canvas" ? (
-            <div className="print-container">
-              {/* Canvas Board Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 canvas-grid">
-                
-                {/* Columna 1: Asociaciones Clave */}
-                <div className="md:col-span-1 md:row-span-2">
-                  <CanvasBlock
-                    section={activeSections[0]}
-                    onAddItem={handleAddItem}
-                    onEditItem={handleEditItem}
-                    onDeleteItem={handleDeleteItem}
-                  />
-                </div>
-
-                {/* Columna 2: Actividades Clave (Top) & Recursos Clave (Bottom) */}
-                <div className="md:col-span-1 md:row-span-2 flex flex-col gap-4">
-                  <div className="flex-1">
-                    <CanvasBlock
-                      section={activeSections[1]}
-                      onAddItem={handleAddItem}
-                      onEditItem={handleEditItem}
-                      onDeleteItem={handleDeleteItem}
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <CanvasBlock
-                      section={activeSections[2]}
-                      onAddItem={handleAddItem}
-                      onEditItem={handleEditItem}
-                      onDeleteItem={handleDeleteItem}
-                    />
-                  </div>
-                </div>
-
-                {/* Columna 3: Propuesta de Valor */}
-                <div className="md:col-span-1 md:row-span-2">
-                  <CanvasBlock
-                    section={activeSections[3]}
-                    onAddItem={handleAddItem}
-                    onEditItem={handleEditItem}
-                    onDeleteItem={handleDeleteItem}
-                  />
-                </div>
-
-                {/* Columna 4: Relaciones (Top) & Canales (Bottom) */}
-                <div className="md:col-span-1 md:row-span-2 flex flex-col gap-4">
-                  <div className="flex-1">
-                    <CanvasBlock
-                      section={activeSections[4]}
-                      onAddItem={handleAddItem}
-                      onEditItem={handleEditItem}
-                      onDeleteItem={handleDeleteItem}
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <CanvasBlock
-                      section={activeSections[5]}
-                      onAddItem={handleAddItem}
-                      onEditItem={handleEditItem}
-                      onDeleteItem={handleDeleteItem}
-                    />
-                  </div>
-                </div>
-
-                {/* Columna 5: Segmentos de Clientes */}
-                <div className="md:col-span-1 md:row-span-2">
-                  <CanvasBlock
-                    section={activeSections[6]}
-                    onAddItem={handleAddItem}
-                    onEditItem={handleEditItem}
-                    onDeleteItem={handleDeleteItem}
-                  />
-                </div>
-
-                {/* Fila Inferior: Estructura de Costes (Left) & Fuentes de Ingresos (Right) */}
-                <div className="md:col-span-2.5">
-                  <CanvasBlock
-                    section={activeSections[7]}
-                    onAddItem={handleAddItem}
-                    onEditItem={handleEditItem}
-                    onDeleteItem={handleDeleteItem}
-                  />
-                </div>
-
-                <div className="md:col-span-2.5">
-                  <CanvasBlock
-                    section={activeSections[8]}
-                    onAddItem={handleAddItem}
-                    onEditItem={handleEditItem}
-                    onDeleteItem={handleDeleteItem}
-                  />
-                </div>
-
-              </div>
+        <!-- Customer Relationships -->
+        <div class="block relationships" data-id="relationships">
+            <div class="block-header">
+                <i data-lucide="heart"></i>
+                <span class="block-title">Relación con Clientes</span>
             </div>
-          ) : (
-            /* GUIDE METHODOLOGY VIEW */
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white border border-slate-200 rounded-xl p-5 md:p-8 space-y-6 max-w-4xl mx-auto shadow-xs"
-            >
-              <div className="space-y-2 border-b pb-4">
-                <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-wider">
-                  <BookOpen className="w-4 h-4" />
-                  Guía de Aprendizaje
-                </div>
-                <h3 className="font-display font-bold text-2xl text-slate-800">
-                  ¿Qué es el Business Model Canvas?
-                </h3>
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  Diseñado originalmente por Alex Osterwalder, el Business Model Canvas es una plantilla de gestión estratégica para el desarrollo de nuevos modelos de negocio o documentar los ya existentes. Permite visualizar las 9 piezas clave de una empresa de forma integrada y ágil.
-                </p>
-              </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('relationships')"><i data-lucide="plus"></i></button>
+        </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {DEFAULT_SECTIONS.map((sec, idx) => (
-                  <div key={sec.id} className="p-4 border border-slate-100 bg-slate-50 rounded-xl space-y-1.5 hover:shadow-xs transition-shadow">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-800 flex items-center justify-center text-[10px] font-bold">
-                        {idx + 1}
-                      </span>
-                      <h4 className="font-display font-bold text-sm text-slate-800">
-                        {sec.title}
-                      </h4>
-                    </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      {sec.description}
-                    </p>
-                    <div className="text-[10px] text-slate-400 italic">
-                      Pregunta clave: {sec.id === "propositions" ? "¿Por qué nos eligen?" : sec.id === "segments" ? "¿Para quién creamos valor?" : sec.id === "revenue" ? "¿Cómo prefieren pagar?" : "¿Qué necesitamos?"}
-                    </div>
-                  </div>
-                ))}
-              </div>
+        <!-- Customer Segments -->
+        <div class="block segments" data-id="segments">
+            <div class="block-header">
+                <i data-lucide="user-check"></i>
+                <span class="block-title">Segmentos de Clientes</span>
+            </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('segments')"><i data-lucide="plus"></i></button>
+        </div>
 
-              <div className="p-4 bg-indigo-50 border border-indigo-100/50 rounded-xl space-y-2">
-                <h4 className="font-display font-bold text-indigo-950 text-sm flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-indigo-600" />
-                  El Orden Recomendado de Llenado
-                </h4>
-                <p className="text-xs text-indigo-900 leading-relaxed">
-                  Aunque el lienzo es flexible, la mejor práctica de Lean Startup sugiere comenzar desde el lado derecho (Mercado): primero define el <strong>Segmento de Clientes (1)</strong> y la <strong>Propuesta de Valor (2)</strong>. Luego, conecta ambas piezas con los <strong>Canales (3)</strong> y las <strong>Relaciones (4)</strong>. Después de definir el mercado, detalla la logística operativa al lado izquierdo: <strong>Actividades (5)</strong>, <strong>Recursos (6)</strong> y <strong>Asociaciones (7)</strong>. Finalmente, calcula la factibilidad económica en la base: <strong>Estructura de Costes (8)</strong> y <strong>Fuentes de Ingreso (9)</strong>.
-                </p>
-              </div>
-            </motion.div>
-          )}
+        <!-- Key Resources -->
+        <div class="block resources" data-id="resources">
+            <div class="block-header">
+                <i data-lucide="layers"></i>
+                <span class="block-title">Recursos Clave</span>
+            </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('resources')"><i data-lucide="plus"></i></button>
+        </div>
 
-        </main>
+        <!-- Channels -->
+        <div class="block channels" data-id="channels">
+            <div class="block-header">
+                <i data-lucide="truck"></i>
+                <span class="block-title">Canales</span>
+            </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('channels')"><i data-lucide="plus"></i></button>
+        </div>
 
-        {/* SLIDE-OVER PANEL: AI Assistant & Brainstorming */}
-        <AnimatePresence>
-          {isAiPanelOpen && (
-            <>
-              {/* Overlay Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsAiPanelOpen(false)}
-                className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 no-print"
-              />
+        <!-- Cost Structure -->
+        <div class="block costs" data-id="costs">
+            <div class="block-header">
+                <i data-lucide="credit-card"></i>
+                <span class="block-title">Estructura de Costes</span>
+            </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('costs')"><i data-lucide="plus"></i></button>
+        </div>
 
-              {/* Side drawer panel */}
-              <motion.div
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="fixed right-0 top-0 bottom-0 max-w-md w-full bg-white shadow-2xl z-50 flex flex-col h-full overflow-hidden no-print border-l border-slate-200"
-              >
-                {/* Drawer Header */}
-                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-indigo-50/50">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-indigo-600" />
-                    <div>
-                      <h3 className="font-display font-bold text-slate-900 text-sm">
-                        Asistente de Lluvia de Ideas IA
-                      </h3>
-                      <p className="text-[10px] text-slate-500 font-medium">Desarrollado con Gemini 3.5 Flash</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setIsAiPanelOpen(false)}
-                    className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {/* Drawer Body Scroll */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-5">
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">
-                      Describe tu idea de negocio o concepto
-                    </label>
-                    <p className="text-[11px] text-slate-400">
-                      Ingresa tu idea en español. El asistente generará de 3 a 4 notas estructuradas listas para aplicar a cada uno de los 9 bloques del lienzo.
-                    </p>
-                    <textarea
-                      value={aiInput}
-                      onChange={(e) => setAiInput(e.target.value)}
-                      placeholder="Ej: Una cafetería móvil de especialidad que funciona en un camión eléctrico vintage, enfocada en zonas de oficinas y eventos corporativos con envases compostables."
-                      rows={4}
-                      className="w-full text-xs p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-sans resize-none bg-slate-50"
-                      disabled={isGenerating}
-                    />
-                  </div>
-
-                  {/* Quick Ideas Selectors */}
-                  {Object.keys(aiSuggestions).length === 0 && !isGenerating && (
-                    <div className="space-y-2.5">
-                      <p className="text-xs font-semibold text-slate-500">¿No tienes una idea a la mano? Prueba estas:</p>
-                      <div className="grid grid-cols-1 gap-2">
-                        {quickConcepts.map((concept) => (
-                          <button
-                            key={concept}
-                            type="button"
-                            onClick={() => setAiInput(concept)}
-                            className="text-left text-[11px] p-2 rounded-lg border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/20 text-slate-700 font-medium transition-all cursor-pointer"
-                          >
-                            💡 {concept}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Loader Animation */}
-                  {isGenerating && (
-                    <div className="py-12 flex flex-col items-center justify-center space-y-4">
-                      <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                      <div className="text-center space-y-1">
-                        <p className="text-xs font-semibold text-slate-800 animate-pulse">Analizando propuesta de negocio...</p>
-                        <p className="text-[10px] text-slate-400">Gemini está conectando las 9 piezas estratégicas.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Error Message */}
-                  {errorMsg && (
-                    <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex gap-2 text-rose-800 text-xs">
-                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-semibold">Error al conectar con la IA</p>
-                        <p className="text-[10px] mt-0.5">{errorMsg}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* AI Output Checklist */}
-                  {Object.keys(aiSuggestions).length > 0 && !isGenerating && (
-                    <div className="space-y-4">
-                      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-start gap-2.5">
-                        <Check className="w-5 h-5 text-indigo-600 shrink-0" />
-                        <div>
-                          <h4 className="font-display font-bold text-indigo-950 text-xs">¡Lluvia de ideas lista!</h4>
-                          <p className="text-[10px] text-indigo-900 mt-0.5">
-                            Selecciona o deselecciona las sugerencias estratégicas abajo y haz clic en aplicar para agregarlas como notas adhesivas a tu lienzo.
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Display suggestions section by section */}
-                      <div className="space-y-4">
-                        {DEFAULT_SECTIONS.map((sec) => {
-                          const suggestions = aiSuggestions[sec.id] || [];
-                          const checks = selectedSuggestions[sec.id] || [];
-                          
-                          if (suggestions.length === 0) return null;
-
-                          return (
-                            <div key={sec.id} className="border border-slate-100 rounded-xl p-3 space-y-2">
-                              <h5 className="text-xs font-bold text-slate-700 flex items-center gap-1.5 border-b pb-1.5">
-                                <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                                {sec.title}
-                              </h5>
-                              <div className="space-y-1.5">
-                                {suggestions.map((text, idx) => {
-                                  const isChecked = checks[idx];
-                                  return (
-                                    <div
-                                      key={idx}
-                                      onClick={() => toggleSuggestionCheck(sec.id, idx)}
-                                      className={`p-2 rounded-lg text-[11px] font-medium border cursor-pointer transition-all flex items-start gap-2 ${
-                                        isChecked
-                                          ? "bg-slate-50 border-slate-200 text-slate-800 font-sans"
-                                          : "bg-white border-transparent text-slate-300 line-through font-sans"
-                                      }`}
-                                    >
-                                      <div className={`w-3.5 h-3.5 rounded border shrink-0 mt-0.5 flex items-center justify-center transition-all ${
-                                        isChecked ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-300"
-                                      }`}>
-                                        {isChecked && <Check className="w-2.5 h-2.5 stroke-[3px]" />}
-                                      </div>
-                                      <span className="leading-relaxed">{text}</span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Drawer Footer Actions */}
-                <div className="p-4 border-t border-slate-100 flex gap-2 bg-slate-50 shrink-0">
-                  {Object.keys(aiSuggestions).length > 0 ? (
-                    <>
-                      <button
-                        onClick={() => {
-                          setAiSuggestions({});
-                          setAiInput("");
-                        }}
-                        className="flex-1 px-3 py-2 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg cursor-pointer transition-all"
-                      >
-                        Reiniciar
-                      </button>
-                      <button
-                        onClick={handleApplyAiSuggestions}
-                        className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer transition-all flex items-center justify-center gap-1.5"
-                      >
-                        <Check className="w-4 h-4" />
-                        Cargar en el Canvas
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={handleGenerateAiCanvas}
-                      disabled={isGenerating || !aiInput.trim()}
-                      className="w-full px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 font-bold text-xs rounded-lg shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      <span>Generar Modelo Completo</span>
-                    </button>
-                  )}
-                </div>
-
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-
-      </div>
+        <!-- Revenue Streams -->
+        <div class="block revenue" data-id="revenue">
+            <div class="block-header">
+                <i data-lucide="dollar-sign"></i>
+                <span class="block-title">Fuentes de Ingresos</span>
+            </div>
+            <div class="notes-container"></div>
+            <button class="add-btn" onclick="addNote('revenue')"><i data-lucide="plus"></i></button>
+        </div>
     </div>
-  );
-}
+
+    <div class="actions">
+        <button class="btn-main" onclick="window.print()">
+            <i data-lucide="download"></i> Exportar a PDF
+        </button>
+        <button class="btn-main" style="background: #ef4444;" onclick="clearAll()">
+            <i data-lucide="trash-2"></i> Limpiar Todo
+        </button>
+    </div>
+</div>
+
+<script>
+    // Inicializar iconos
+    lucide.createIcons();
+
+    // Cargar datos guardados al iniciar
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedData = JSON.parse(localStorage.getItem('bmcData')) || {};
+        Object.keys(savedData).forEach(blockId => {
+            const container = document.querySelector(`[data-id="${blockId}"] .notes-container`);
+            savedData[blockId].forEach(text => {
+                createNoteElement(container, text, blockId);
+            });
+        });
+    });
+
+    function addNote(blockId) {
+        const text = prompt("Introduce tu idea:");
+        if (text && text.trim() !== "") {
+            const container = document.querySelector(`[data-id="${blockId}"] .notes-container`);
+            createNoteElement(container, text, blockId);
+            saveData();
+        }
+    }
+
+    function createNoteElement(container, text, blockId) {
+        const note = document.createElement('div');
+        note.className = 'note';
+        note.innerHTML = `
+            ${text}
+            <div class="delete-btn">&times;</div>
+        `;
+
+        note.querySelector('.delete-btn').onclick = (e) => {
+            e.stopPropagation();
+            note.remove();
+            saveData();
+        };
+
+        note.onclick = () => {
+            const newText = prompt("Editar nota:", text);
+            if (newText) {
+                note.firstChild.textContent = newText;
+                saveData();
+            }
+        };
+
+        container.appendChild(note);
+    }
+
+    function saveData() {
+        const data = {};
+        document.querySelectorAll('.block').forEach(block => {
+            const id = block.getAttribute('data-id');
+            const notes = Array.from(block.querySelectorAll('.note')).map(n => n.firstChild.textContent.trim());
+            data[id] = notes;
+        });
+        localStorage.setItem('bmcData', JSON.stringify(data));
+    }
+
+    function clearAll() {
+        if(confirm("¿Estás seguro de que quieres borrar todo el canvas?")) {
+            document.querySelectorAll('.notes-container').forEach(c => c.innerHTML = "");
+            localStorage.removeItem('bmcData');
+        }
+    }
+</script>
+
+</body>
+</html>
