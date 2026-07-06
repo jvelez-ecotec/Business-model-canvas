@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lienzo de Modelo de Negocio - Mi Proyecto de Innovación</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons (as SVG wrappers) -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    body {
+      background-color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+    }
+    .sticky-note-shadow {
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03), inset 0 -2px 0 0 rgba(0, 0, 0, 0.05);
+      transition: all 0.2s ease;
+    }
+    .sticky-note-shadow:hover {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04), inset 0 -2px 0 0 rgba(0, 0, 0, 0.05);
+      transform: translateY(-1px);
+    }
+    
+    @media print {
+      body {
+        background-color: white !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .canvas-grid {
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+      }
+      .canvas-section {
+        border: 1px solid #cbd5e1 !important;
+        page-break-inside: avoid;
+      }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8">
+
+  <div class="max-w-7xl mx-auto print-container">
+    
+    <!-- Header -->
+    <header class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-5 no-print">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="px-2 py-1 text-xs font-semibold bg-indigo-100 text-indigo-800 rounded-full font-sans uppercase tracking-wider">Canvas Portátil</span>
+          <span class="text-xs text-slate-400">Totalmente Interactivo</span>
+        </div>
+        <h1 class="text-3xl font-display font-extrabold text-slate-800 tracking-tight" id="project-title-display">Mi Proyecto de Innovación</h1>
+        <p class="text-sm text-slate-500 mt-1" id="project-desc-display">Un modelo de negocios disruptivo enfocado en solucionar problemas reales.</p>
+      </div>
+      
+      <div class="flex items-center gap-2 shrink-0">
+        <button onclick="window.print()" class="px-4 py-2 text-sm bg-white border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 shadow-xs transition-all cursor-pointer flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+          Imprimir / PDF
+        </button>
+        <button onclick="resetCanvas()" class="px-4 py-2 text-sm bg-rose-50 border border-rose-100 text-rose-700 font-medium rounded-lg hover:bg-rose-100/70 transition-all cursor-pointer flex items-center gap-1.5">
+          Reiniciar
+        </button>
+      </div>
+    </header>
+
+    <!-- Printable Header (Only shown during print) -->
+    <div class="hidden print:block mb-4 border-b pb-4">
+      <h1 class="text-2xl font-bold text-black">Mi Proyecto de Innovación</h1>
+      <p class="text-xs text-slate-600 mt-0.5">Un modelo de negocios disruptivo enfocado en solucionar problemas reales.</p>
+      <div class="text-[9px] text-slate-400 mt-1">Exportado desde el Gestor de Canvas Interactivo</div>
+    </div>
+
+    <!-- MAIN CANVAS GRID -->
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 canvas-grid mb-6">
+      
+      <!-- Columna 1: Asociaciones Clave -->
+      <div class="md:col-span-1 md:row-span-2 flex flex-col min-h-[300px] border border-slate-200 rounded-xl bg-rose-50/20 canvas-section" id="section-partners"></div>
+
+      <!-- Columna 2: Actividades y Recursos -->
+      <div class="md:col-span-1 md:row-span-2 flex flex-col gap-4">
+        <div class="flex-1 min-h-[160px] border border-slate-200 rounded-xl bg-amber-50/20 canvas-section" id="section-activities"></div>
+        <div class="flex-1 min-h-[160px] border border-slate-200 rounded-xl bg-emerald-50/20 canvas-section" id="section-resources"></div>
+      </div>
+
+      <!-- Columna 3: Propuestas de Valor -->
+      <div class="md:col-span-1 md:row-span-2 flex flex-col min-h-[300px] border border-slate-200 rounded-xl bg-sky-50/20 canvas-section" id="section-propositions"></div>
+
+      <!-- Columna 4: Relaciones y Canales -->
+      <div class="md:col-span-1 md:row-span-2 flex flex-col gap-4">
+        <div class="flex-1 min-h-[160px] border border-slate-200 rounded-xl bg-violet-50/20 canvas-section" id="section-relationships"></div>
+        <div class="flex-1 min-h-[160px] border border-slate-200 rounded-xl bg-orange-50/20 canvas-section" id="section-channels"></div>
+      </div>
+
+      <!-- Columna 5: Segmentos de Clientes -->
+      <div class="md:col-span-1 md:row-span-2 flex flex-col min-h-[300px] border border-slate-200 rounded-xl bg-fuchsia-50/20 canvas-section" id="section-segments"></div>
+
+      <!-- Fila de Costes e Ingresos -->
+      <div class="md:col-span-2.5 border border-slate-200 rounded-xl bg-stone-50/20 min-h-[180px] canvas-section" id="section-costs"></div>
+      <div class="md:col-span-2.5 border border-slate-200 rounded-xl bg-indigo-50/20 min-h-[180px] canvas-section" id="section-revenue"></div>
+    </div>
+    
+    <footer class="text-center text-xs text-slate-400 py-6 border-t border-slate-200/60 mt-10 no-print flex flex-col sm:flex-row sm:justify-between gap-2">
+      <p>© 2026 Lienzo Canvas Interactivo. Todos los cambios se guardan automáticamente en tu navegador.</p>
+      <p class="font-semibold text-indigo-500">Totalmente auto-gestionado y listo para usar sin internet</p>
+    </footer>
+
+  </div>
+
+  <!-- Note Creator Dialog -->
+  <div id="add-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 hidden z-50 no-print">
+    <div class="bg-white rounded-xl shadow-lg border border-slate-200 max-w-sm w-full p-5">
+      <h3 class="font-display font-semibold text-slate-800 text-base mb-3">Añadir Nota a <span id="modal-section-title">Sección</span></h3>
+      <textarea id="modal-text" rows="3" class="w-full text-sm p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 mb-4 font-sans resize-none" placeholder="Escribe tu idea aquí..."></textarea>
+      
+      <label class="block text-xs font-medium text-slate-500 mb-2">Color de la nota</label>
+      <div class="flex gap-2 mb-5" id="modal-colors"></div>
+
+      <div class="flex justify-end gap-2">
+        <button onclick="closeModal()" class="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg cursor-pointer">Cancelar</button>
+        <button onclick="saveNewItem()" class="px-4 py-1.5 text-xs bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg transition-all cursor-pointer">Añadir Nota</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT ENGINE -->
+  <script>
+    // Initial sections injected directly from application
+    let rawSections = [{"id":"partners","name":"partners","title":"Asociaciones Clave","description":"Socios, proveedores o alianzas estratégicas necesarias para operar.","icon":"partners","placeholder":"Ej: Proveedores de café en grano, servicio de delivery local...","items":[]},{"id":"activities","name":"activities","title":"Actividades Clave","description":"Acciones críticas y procesos más importantes para que el negocio funcione.","icon":"activities","placeholder":"Ej: Tostado artesanal de café, marketing digital...","items":[]},{"id":"resources","name":"resources","title":"Recursos Clave","description":"Activos físicos, intelectuales, humanos y financieros indispensables.","icon":"resources","placeholder":"Ej: Baristas calificados, máquina de café espresso industrial...","items":[]},{"id":"propositions","name":"propositions","title":"Propuestas de Valor","description":"La solución, el conjunto de productos/servicios y los beneficios que te hacen único.","icon":"propositions","placeholder":"Ej: Café orgánico de especialidad con área de coworking silenciosa...","items":[]},{"id":"relationships","name":"relationships","title":"Relación con Clientes","description":"El tipo de interacción, asistencia y experiencia que ofreces a tu mercado.","icon":"relationships","placeholder":"Ej: Atención personalizada, club de fidelización con app móvil...","items":[]},{"id":"channels","name":"channels","title":"Canales","description":"Medios de comunicación, distribución y ventas para entregar la propuesta.","icon":"channels","placeholder":"Ej: Tienda física, tienda web, Instagram, UberEats...","items":[]},{"id":"segments","name":"segments","title":"Segmentos de Clientes","description":"Los perfiles, nichos o comunidades específicas para las que creas valor.","icon":"segments","placeholder":"Ej: Profesionales remotos que buscan un espacio tranquilo, amantes del café...","items":[]},{"id":"costs","name":"costs","title":"Estructura de Costes","description":"Los gastos más significativos necesarios para operar el modelo de negocio.","icon":"costs","placeholder":"Ej: Alquiler del local, salarios del personal, compra de café...","items":[]},{"id":"revenue","name":"revenue","title":"Fuentes de Ingresos","description":"Cómo monetizas tus soluciones (suscripciones, ventas directas, licencias).","icon":"revenue","placeholder":"Ej: Venta de bebidas/comida, suscripción mensual de café, alquiler de sala...","items":[]}];
+    
+    // Attempt to load from localStorage first for persistence in the downloaded file itself!
+    const storageKey = 'business_canvas_portable_' + window.location.pathname;
+    const localData = localStorage.getItem(storageKey);
+    if (localData) {
+      try {
+        rawSections = JSON.parse(localData);
+      } catch(e) {
+        console.error("Error reading localStorage, using default", e);
+      }
+    }
+
+    const sectionMetas = {
+      partners: { title: "Asociaciones Clave", color: "bg-rose-500", placeholder: "Socios, proveedores o alianzas estratégicas..." },
+      activities: { title: "Actividades Clave", color: "bg-amber-500", placeholder: "Acciones requeridas para operar el negocio..." },
+      resources: { title: "Recursos Clave", color: "bg-emerald-500", placeholder: "Activos necesarios para crear y ofrecer valor..." },
+      propositions: { title: "Propuestas de Valor", color: "bg-sky-500", placeholder: "Qué problemas resolvemos o qué valor entregamos..." },
+      relationships: { title: "Relación con Clientes", color: "bg-violet-500", placeholder: "Cómo nos relacionamos con los clientes..." },
+      channels: { title: "Canales", color: "bg-orange-500", placeholder: "Puntos de contacto y formas de entrega..." },
+      segments: { title: "Segmentos de Clientes", color: "bg-fuchsia-500", placeholder: "Para quién creamos valor..." },
+      costs: { title: "Estructura de Costes", color: "bg-stone-600", placeholder: "Costes fijos, variables y operativos indispensables..." },
+      revenue: { title: "Fuentes de Ingresos", color: "bg-indigo-600", placeholder: "Cómo y por qué concepto ingresa dinero..." }
+    };
+
+    const colorOptions = [
+      { value: "bg-amber-100 text-amber-900 border-amber-200", dot: "bg-amber-300" },
+      { value: "bg-sky-100 text-sky-900 border-sky-200", dot: "bg-sky-300" },
+      { value: "bg-emerald-100 text-emerald-900 border-emerald-200", dot: "bg-emerald-300" },
+      { value: "bg-rose-100 text-rose-900 border-rose-200", dot: "bg-rose-300" },
+      { value: "bg-violet-100 text-violet-900 border-violet-200", dot: "bg-violet-300" },
+      { value: "bg-orange-100 text-orange-900 border-orange-200", dot: "bg-orange-300" }
+    ];
+
+    let activeSectionId = null;
+    let selectedColor = colorOptions[0].value;
+
+    function saveState() {
+      localStorage.setItem(storageKey, JSON.stringify(rawSections));
+      renderCanvas();
+    }
+
+    function renderCanvas() {
+      rawSections.forEach(section => {
+        const meta = sectionMetas[section.id];
+        const container = document.getElementById('section-' + section.id);
+        if (!container) return;
+
+        // Render clean structural block
+        let html = `
+          <div class="p-3.5 border-b border-slate-100/80 flex items-start justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full ${meta.color} inline-block shrink-0"></span>
+              <h3 class="font-display font-semibold text-sm text-slate-800 leading-tight">${meta.title}</h3>
+            </div>
+            <button onclick="openAddModal('${section.id}')" class="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full cursor-pointer no-print" title="Añadir">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            </button>
+          </div>
+          <div class="p-3 space-y-2 flex-1 overflow-y-auto max-h-[340px]">
+        `;
+
+        if (section.items.length === 0) {
+          html += `
+            <div onclick="openAddModal('${section.id}')" class="h-24 border border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center text-slate-400 p-2 text-center text-xs cursor-pointer hover:bg-slate-50/50 transition-all no-print">
+              <span class="text-xs font-semibold">+ Añadir nota</span>
+            </div>
+          `;
+        } else {
+          section.items.forEach(item => {
+            html += `
+              <div class="p-3 rounded-lg border sticky-note-shadow relative group ${item.color}">
+                
+                <!-- Action Buttons -->
+                <div class="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 p-0.5 rounded-md border border-slate-100 no-print">
+                  <button onclick="deleteItem('${section.id}', '${item.id}')" class="p-0.5 text-slate-400 hover:text-rose-600 rounded cursor-pointer" title="Eliminar">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  </button>
+                </div>
+
+                <p class="text-xs text-slate-800 break-words font-sans whitespace-pre-wrap">${item.text}</p>
+                <div class="mt-1.5 flex justify-between text-[8px] text-slate-400 font-mono">
+                  <span>💡 Nota</span>
+                </div>
+              </div>
+            `;
+          });
+        }
+
+        html += `</div>`;
+        container.innerHTML = html;
+      });
+    }
+
+    // Modal Operations
+    function openAddModal(sectionId) {
+      activeSectionId = sectionId;
+      const meta = sectionMetas[sectionId];
+      document.getElementById('modal-section-title').innerText = meta.title;
+      document.getElementById('modal-text').value = '';
+      document.getElementById('modal-text').placeholder = meta.placeholder;
+      
+      // Render color picker
+      const colorsContainer = document.getElementById('modal-colors');
+      colorsContainer.innerHTML = '';
+      
+      colorOptions.forEach((opt, idx) => {
+        const isSelected = selectedColor === opt.value;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `w-6 h-6 rounded-full ${opt.dot} ring-offset-1 transition-all ${isSelected ? 'ring-2 ring-slate-600 scale-110' : 'hover:scale-105'}`;
+        btn.onclick = () => {
+          selectedColor = opt.value;
+          openAddModal(sectionId); // Redraw colors selection state
+        };
+        colorsContainer.appendChild(btn);
+      });
+
+      document.getElementById('add-modal').classList.remove('hidden');
+      document.getElementById('modal-text').focus();
+    }
+
+    function closeModal() {
+      document.getElementById('add-modal').classList.add('hidden');
+    }
+
+    function saveNewItem() {
+      const text = document.getElementById('modal-text').value.trim();
+      if (!text) return;
+
+      const targetSection = rawSections.find(s => s.id === activeSectionId);
+      if (targetSection) {
+        targetSection.items.push({
+          id: 'note_' + Date.now(),
+          text: text,
+          color: selectedColor,
+          createdAt: Date.now()
+        });
+        saveState();
+      }
+      closeModal();
+    }
+
+    function deleteItem(sectionId, itemId) {
+      const targetSection = rawSections.find(s => s.id === sectionId);
+      if (targetSection) {
+        targetSection.items = targetSection.items.filter(item => item.id !== itemId);
+        saveState();
+      }
+    }
+
+    function resetCanvas() {
+      if (confirm('¿Estás seguro de que deseas eliminar todas las notas de este lienzo? Esta acción no se puede deshacer.')) {
+        rawSections.forEach(s => s.items = []);
+        saveState();
+      }
+    }
+
+    // Initialize Page
+    renderCanvas();
+  </script>
+</body>
+</html>
